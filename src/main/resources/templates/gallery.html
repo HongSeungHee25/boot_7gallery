@@ -60,13 +60,32 @@
 		const target = e.target
 		if(target.tagName != 'INPUT') return
 		if(userid!='') {		//로그인 되었을 때만 이벤트 리스너 등록
+			const idx = target.getAttribute("id")
+			const value = target.checked 		//참, 거짓
+			const writer = target.getAttribute("data-num")
+				heart(idx,value,writer)
+			//좋아요 누르면 카운트 변경은 응답받은것으로 변경 또는 아래와 같이 간단히 좋아요 카운트를 변경할 태그요소 가져와 값 변경하기
+			const spanEle = document.querySelector('#span'+idx)
+			if(target.checked) spanEle.innerHTML = Number(spanEle.innerHTML)+1
+							//원래 값 +1
+			else spanEle.innerHTML = Number(spanEle.innerHTML)-1
+							//체크가 해재되어 false 이면 원래 값 -1
+			console.log(spanEle)
 
 		}else {
 			alert('로그인이 필요합니다.')
 			e.preventDefault()
 
 		}
-	})
+	})//이벤트 리스너 끝
+	let hearts = [[${myhearts}]]	//내가 좋아요 한 글번호 배열 가져와서 체크박스 상태 설정하기
+	if(hearts && hearts.length > 0){
+		document.querySelectorAll('.heart').forEach(item =>{
+			if(hearts.includes(Number(item.value))) item.checked = true;
+			else item.checked = false;
+		})
+
+	}
 
 
 

@@ -9,6 +9,8 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 
+import java.util.List;
+
 @Controller
 public class GalleryController {
 
@@ -22,6 +24,11 @@ public class GalleryController {
 	public void gallery(Model model,HttpSession session) {		//화면 : 파일명은 gallery.html
 		String userid = (String)session.getAttribute("userid");
 		model.addAttribute("list", service.getList());
+		if(userid != null)
+			model.addAttribute("myhearts",service.myHearts(userid));
+		else
+			model.addAttribute("myhearts", List.of(0));
+		//로그인 사용자의 좋아요 글목록을 저장하기
 
 	} //3-g. 로그인 사용자의 좋아요 글목록을 저장하기
 	
@@ -30,4 +37,6 @@ public class GalleryController {
 		int count = service.save(vo);
 		return "redirect:gallery";
 	}
+
+
 }

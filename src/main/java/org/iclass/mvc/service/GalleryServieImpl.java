@@ -2,12 +2,15 @@ package org.iclass.mvc.service;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.iclass.mvc.dao.GalleryMapper;
 import org.iclass.mvc.dto.Gallery;
 import org.iclass.mvc.dto.Heart;
+import org.iclass.mvc.dto.HeartResponseDTO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -69,9 +72,40 @@ public class GalleryServieImpl implements GalleryService{
 
 	//////////////3-f. 좋아요 ///////////////////////////////////////////////////////
 	@Override
-	public Heart processHeartCount(String data) {  
-		return null;
-	}
+	public Map<String, String> processHeartCount(String data) {			//data는 json 문자열
+		//이 메소드는 여러개의 insert, update, delete DML 을 실행하므로 한 묶음의 실행인 트랜잭션 처리가 필요하여 애노테이션을 추가함.
+		//좋아요 문자열 정보를 받아 객체로 만들고 다시 필요한 결과값을 직렬화한다.
+		Heart heart = null;
+		Map<String, String> resultMap = new HashMap<>();
+		try {
+			ObjectMapper objectMapper = new ObjectMapper();		//json과 자바객체 변환하는 매퍼
+			heart = objectMapper.readValue(data, Heart.class);	//받은 문자열 -> 역직렬화(Heart 타입 객체)
+			log.info(">>> service heart 정보 : {}",heart);		//누가 어느 글에 좋아요를 등록/취소 했는지에 대한 값을 heart 객체에 저장
+			String alarm = heart.getUserid()+"님이 gallery "+heart.getIdx() + "번 글에";
+			if(heart.isValue()){
+				dao.heartTrue(heart);		//좋아요 등록
+				alarm += " 좋아요를 남겼습니다.";
+			}else{
+				dao.heartFalse(heart);		//좋아요 취소
+				alarm += " 좋아요를 취소했습니다.";
+			}
+			dao.updateHeartCount(heart.getIdx());	//좋아요 갯수 update
+			int cnt = dao.hearts(heart.getIdx());	//변경된 갯수 가져오기
+
+			HeartResponseDTO responseDTO = HeartResponseDTO.builder()
+					.alarm(alarm)
+					.hearts(cnt)
+					.writer(heart.getWriter())
+					.build();
+			String result = objectMapper.writeValueAsString(responseDTO);		//직렬화(자바객체를 json 문자열로 변환)
+
+			resultMap.put("writer",heart.getWriter());
+			resultMap.put("result",result);
+		}catch (JsonProcessingException e){
+			e.printStackTrace();
+		}
+		return resultMap;
+	}//메소드 끝
 
 	@Override   //로그인한 사용자가 좋아요 누른 글 목록
 	public List<Integer> myHearts(String userid) {

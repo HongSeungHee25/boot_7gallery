@@ -21,10 +21,21 @@ public class AlertHandler extends TextWebSocketHandler {
 // 텍스트 기반의 통신을 구현해볼 것 이므로 'TextWebSocketHandler'를 상속받아서 작성한다.
 
 	//데이터 송수신이 발생했을 때 처리 할 내용을 정해본다.
-	//1. 새로운 클라이언트와 소켓이 연결되면 모든 접속자들에게 'id ... 님이 접속하였습니다. ' 라고 보낸다.
+	//1. 새로운 클라이언트와 소켓이 연결되면 ★★★★★ 모든 접속자들에게 'id ... 님이 접속하였습니다. ' 라고 보낸다.
 	private List<WebSocketSession> wsslist = new ArrayList<>();				//1-a.접속자들의 세션을 저장할 리스트
 	
-		//소켓 연결이 이루어 진 후에 할일 처리 - 새로운 클라이언트와의 연결이 발생하면 실행되는 메소드
+	//2. 좋아요 클릭하면 ★★★★★글 주인에게만 메시지 보내기
+	private Map<String,WebSocketSession> wsmap = new HashMap<>();
+
+	//좋아요 처리에 필요한 서비스 클래스 자동 주입
+	private GalleryService service;
+
+	@Autowired			//socket config 클래스에서 기본생성자 사용하므로 setter 주입으로 합니다.
+	public void setService(GalleryService service) {
+		this.service = service;
+	}
+
+	//소켓 연결이 이루어 진 후에 할일 처리 - 새로운 클라이언트와의 연결이 발생하면 실행되는 메소드
 		@Override   //지금까지 세션은 http프로토콜 세션(HttpSession), 웹소켓은 ws프로토콜 전달받는 세션은 소켓세션
 		public void afterConnectionEstablished(WebSocketSession session) throws Exception {
 			log.info("새로운 클라이언트 : {}",session);
@@ -57,6 +68,9 @@ public class AlertHandler extends TextWebSocketHandler {
 				for(WebSocketSession ws : wsslist)		// 모든 접속자에게 보내기
 					ws.sendMessage(new TextMessage(senderId +" 님이 접속하였습니다."));
 					//ws에게 메시지 보내기: 보낼 메시지 타입은 TextMessage
+
+				//map에 사용자 id를 key , socket 세션을 value 로 저장하기 - 좋아요에서 필요
+				wsmap.put(senderId,session);
 				
 			} //open if end
 		   if(content.startsWith("close")){
@@ -64,6 +78,20 @@ public class AlertHandler extends TextWebSocketHandler {
 			   for(WebSocketSession ws : wsslist)
 				   ws.sendMessage(new TextMessage(senderId+" 님이 로그아웃하셨습니다."));
 			}//close id end
+		   if(content.startsWith("heart")){
+			   String data = content.substring(6);	//  클라이언트가 보낸 close/접속자id 에서 / 기호 뒤의 접속자 id만 가져오기
+			   Map<String,String> response = service.processHeartCount(data);
+
+			   log.info(">>>>> 서비스 응답 writer : {}",response.get("writer"));
+			   log.info(">>>>> 서비스 응답 result : {}",response.get("result"));
+
+			   //응답 받은 writer 가 로그인 되어 있으면 1:1 메시지 보내기 -> map 에서 session 찾기
+			   WebSocketSession receiver = wsmap.get(response.get("writer"));
+			   if(receiver != null)
+				   receiver.sendMessage(new TextMessage(response.get("result")));
+
+		   }//heart id end
+
 
 			
 	   } //handleTextMessage end
